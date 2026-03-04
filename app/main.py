@@ -1,12 +1,12 @@
 # app/main.py ou app/exceptions.py
 
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
-from starlette.exceptions import HTTPException as StarletteHTTPException
+from fastapi import FastAPI, Request # type: ignore
+from fastapi.responses import JSONResponse # type: ignore
+from fastapi.exceptions import RequestValidationError # type: ignore
+from starlette.exceptions import HTTPException as StarletteHTTPException # type: ignore
 from contextlib import asynccontextmanager
 from app.database import init_database
-#from app.routers import aavs  # Chaque groupe importe ses routers
+from app.routers import statuts
 from app.database import DatabaseError #Rajout 
 
 @asynccontextmanager
@@ -35,7 +35,7 @@ app = FastAPI(
 )
 
 # Inclusion des routers
-#app.include_router(aavs.router)
+app.include_router(statuts.router)
 # app.include_router(learners.router)  # Décommenter selon le groupe
 
 # ============================================

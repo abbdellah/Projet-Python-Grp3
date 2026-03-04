@@ -1,6 +1,6 @@
 # app/models.py
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator # type: ignore
 from typing import Optional, List, Literal
 from enum import Enum
 from datetime import datetime
@@ -204,7 +204,7 @@ class TentativeCreate(BaseModel):
     temps_resolution_secondes: Optional[int] = Field(None, ge=0, description="Temps de résolution en secondes")
     metadata: Optional[dict] = Field(None, description="Infos supplémentaires sur la tentative au format JSON")
 
-    @model_validator('score_obtenu')
+    @field_validator('score_obtenu')
     @classmethod
     def arrondir_score(cls, x: float) -> float:
         """
