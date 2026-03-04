@@ -32,6 +32,7 @@ def get_db_connection():
     conn = sqlite3.connect(DATABASE_PATH)
     # Permet d'accéder aux colonnes par nom: row['nom_colonne']
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON") # Rajout de ma part !!
 
     try:
         yield conn
