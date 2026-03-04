@@ -1,0 +1,13 @@
+venv/
+.env
+
+__pycache__/
+*.py[cod]
+*$py.class
+
+*.db
+!platonAAV_test.db  # Optionnel : si vous voulez partager une base de test spécifique
+
+.vscode/
+.idea/
+.DS_Store
