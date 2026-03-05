@@ -8,16 +8,18 @@ from contextlib import asynccontextmanager
 from app.database import init_database
 from app.routers import statuts
 from app.database import DatabaseError #Rajout 
+from app.routers.attempts import router as attempts_router
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Gestion du cycle de vie de l'application."""
     # Startup: initialisation
-    print("🚀 Initialisation de la base de données...")
+    print(" Initialisation de la base de données...")
     init_database()
     yield
     # Shutdown: nettoyage
-    print("🛑 Arrêt du serveur")
+    print(" Arrêt du serveur")
 
 app = FastAPI(
     title="PlatonAAV API",
@@ -35,6 +37,7 @@ app = FastAPI(
 )
 
 # Inclusion des routers
+app.include_router(attempts_router)
 app.include_router(statuts.router)
 # app.include_router(learners.router)  # Décommenter selon le groupe
 
