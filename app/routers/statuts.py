@@ -72,9 +72,9 @@ def get_learning_status(id_apprenant: Optional[int] = None, id_aav: Optional[int
             args.append(id_aav)
 
         cursor.execute(query, args)
-        results = cursor.fetchall()
+        ress = cursor.fetchall()
 
-    return [sqlite_to_statut(row) for row in results]
+    return [sqlite_to_statut(row) for row in ress]
 
 @router.get("/learning-status/{statut_id}", response_model=StatutApprentissage)
 def get_learning_status_by_id(statut_id: int):
@@ -93,12 +93,12 @@ def get_learning_status_by_id(statut_id: int):
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM statut_apprentissage WHERE id = ?", (statut_id,))
-        result = cursor.fetchone()
+        res = cursor.fetchone()
 
-    if not result:
+    if not res:
         raise HTTPException(status_code=404, detail=f"Statut d'apprentissage d'ID {statut_id} non trouvé")
 
-    return sqlite_to_statut(result)
+    return sqlite_to_statut(res)
 
 @router.post("/learning-status", response_model=StatutApprentissage, status_code=201)
 def create_learning_status(statut: StatutApprentissageCreate):
@@ -139,12 +139,12 @@ def create_learning_status(statut: StatutApprentissageCreate):
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM statut_apprentissage WHERE id = ?", (statut_id,))
-        result = cursor.fetchone()
+        res = cursor.fetchone()
 
-    if not result:
+    if not res:
         raise HTTPException(status_code=500, detail="Erreur lors de la création/récupération du statut d'apprentissage")
 
-    return sqlite_to_statut(result)
+    return sqlite_to_statut(res)
 
 @router.put("/learning-status/{statut_id}", response_model=StatutApprentissage)
 def update_learning_status(statut_id: int, statut: StatutApprentissageUpdate):  # Pr cette fonction faut trouver si y a mieux que tout ces if
@@ -164,9 +164,9 @@ def update_learning_status(statut_id: int, statut: StatutApprentissageUpdate):  
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM statut_apprentissage WHERE id = ?", (statut_id,))
-        result = cursor.fetchone()
+        res = cursor.fetchone()
 
-    if not result:
+    if not res:
         raise HTTPException(status_code=404, detail=f"Statut d'apprentissage d'ID {statut_id} non trouvé")
 
     with get_db_connection() as conn:
@@ -186,16 +186,16 @@ def update_learning_status(statut_id: int, statut: StatutApprentissageUpdate):  
         champs_fournies.append("date_derniere_session = ?")
         valeurs.append(datetime.now())
 
-        if not champs_fournies:
+        if not champs_fournies: # Je crois que ça sert à rien vu que date_derniere_session est tjrs mis à jour nn ? (Si oui est ce que est ce que on supprime le bloc if ou on vérifie si champs_fournies est vide et si il est vide ça sert à rien de faire un update et on retourne directement le statut actuel ?)
             with get_db_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute("SELECT * FROM statut_apprentissage WHERE id = ?", (statut_id,))
-                result = cursor.fetchone()
+                res = cursor.fetchone()
 
-            if not result:
+            if not res:
                 raise HTTPException(status_code=404, detail=f"Statut d'apprentissage d'ID {statut_id} non trouvé")
             
-            return sqlite_to_statut(result)
+            return sqlite_to_statut(res)
         
         valeurs.append(statut_id)
         cursor.execute(f"UPDATE statut_apprentissage SET {', '.join(champs_fournies)} WHERE id = ?", valeurs)
@@ -203,12 +203,12 @@ def update_learning_status(statut_id: int, statut: StatutApprentissageUpdate):  
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM statut_apprentissage WHERE id = ?", (statut_id,))
-        result = cursor.fetchone()
+        res = cursor.fetchone()
 
-    if not result:
+    if not res:
         raise HTTPException(status_code=404, detail=f"Statut d'apprentissage d'ID {statut_id} non trouvé")
     
-    return sqlite_to_statut(result)
+    return sqlite_to_statut(res)
 
 @router.patch("/learning-status/{statut_id}/mastery", response_model=StatutApprentissage)
 def update_mastery(statut_id: int, statut: StatutApprentissageMasteryUpdate):
@@ -228,9 +228,9 @@ def update_mastery(statut_id: int, statut: StatutApprentissageMasteryUpdate):
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM statut_apprentissage WHERE id = ?", (statut_id,))
-        result = cursor.fetchone()
+        res = cursor.fetchone()
 
-    if not result:
+    if not res:
         raise HTTPException(status_code=404, detail=f"Statut d'apprentissage d'ID {statut_id} non trouvé")
     
     with get_db_connection() as conn:
@@ -240,9 +240,113 @@ def update_mastery(statut_id: int, statut: StatutApprentissageMasteryUpdate):
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM statut_apprentissage WHERE id = ?", (statut_id,))
-        result = cursor.fetchone()
+        res = cursor.fetchone()
 
-    if not result:
+    if not res:
         raise HTTPException(status_code=404, detail=f"Statut d'apprentissage d'ID {statut_id} non trouvé")
     
-    return sqlite_to_statut(result)
+    return sqlite_to_statut(res)
+
+@router.get("/learning-status/{id}/attempts", response_model=List[Tentative])
+def get_attempts_by_id(id: int):
+    """
+    Retourne l'historique des tentatives d'un statut d'apprentissage spécifique grâce à son ID.
+
+    Args:
+        id (int): L'ID du statut d'apprentissage
+
+    Returns:
+        List[Tentative]: La liste des tentatives correspondantes
+    """
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM statut_apprentissage WHERE id = ?", (id,))
+        statut = cursor.fetchone()
+
+    if not statut:
+        raise HTTPException(status_code=404, detail=f"Statut d'apprentissage d'ID {id} non trouvé")
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """SELECT * FROM tentative
+               WHERE id_apprenant = ? AND id_aav_cible = ?
+               ORDER BY date_tentative ASC""",
+            (statut["id_apprenant"], statut["id_aav_cible"])
+        )
+        res = cursor.fetchall()
+
+    return [sqlite_to_tentative(row) for row in res]
+
+
+@router.get("/learning-status/{id}/attempts/timeline", response_model=List[Tentative])
+def get_attempts_timeline_by_id(id: int):
+    """
+    Retourne la vue chronologique des tentatives d'un statut d'apprentissage spécifique grâce à son ID (vue chronologique des progrès).
+
+    Args:
+        id (int): L'ID du statut d'apprentissage
+
+    Returns:
+        List[Tentative]: La liste des tentatives correspondantes
+    """
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM statut_apprentissage WHERE id = ?", (id,))
+        statut = cursor.fetchone()
+
+    if not statut:
+        raise HTTPException(status_code=404, detail=f"Statut d'apprentissage d'ID {id} non trouvé")
+    
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """SELECT * FROM tentative
+               WHERE id_apprenant = ? AND id_aav_cible = ?
+               ORDER BY date_tentative DESC""",
+            (statut["id_apprenant"], statut["id_aav_cible"])
+        )
+        res = cursor.fetchall()
+    
+    return [sqlite_to_tentative(row) for row in res]
+
+@router.post("/learning-status/{id}/reset", response_model=StatutApprentissage)
+def reset_learning_status(id: int):
+    """
+    Réinitialise un statut d'apprentissage à zéro.
+
+    Args:
+        id (int): L'ID du statut d'apprentissage à réinitialiser
+
+    Returns:
+        StatutApprentissage: Le statut d'apprentissage réinitialisé
+    """
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM statut_apprentissage WHERE id = ?", (id,))
+        statut = cursor.fetchone()
+    
+    if not statut:
+        raise HTTPException(status_code=404, detail=f"Statut d'apprentissage d'ID {id} non trouvé")
+    
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """UPDATE statut_apprentissage
+               SET niveau_maitrise = 0.0,
+                   historique_tentatives_ids = ?,
+                   date_derniere_session = ?
+               WHERE id = ?""",
+            (to_json([]), datetime.now().isoformat(), id)
+        )
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM statut_apprentissage WHERE id = ?", (id,))
+        res = cursor.fetchone()
+
+    if not res:
+        raise HTTPException(status_code=404, detail=f"Statut d'apprentissage d'ID {id} non trouvé")
+    
+    return sqlite_to_statut(res)
+
