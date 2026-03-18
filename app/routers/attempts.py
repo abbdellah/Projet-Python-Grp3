@@ -121,23 +121,10 @@ def delete_attempt(id: int):
 
 @router.post("/attempts/{id}/process", response_model=Process)
 def process_attempt(id: int):
-    """
-    Traite une tentative : met à jour le statut_apprentissage (mastery + historique)
-    en fonction des scores et renvoie un message.
-    """
-    cur.execute("SELECT regles_progression FROM aav WHERE id_aav = ?", (id_aav_cible,))
-    aav_row = cur.fetchone()
-    if aav_row is None:
-        raise HTTPException(status_code=404, detail=f"AAV introuvable: id={id_aav_cible}")
-
-    regles = from_json(aav_row["regles_progression"]) if aav_row["regles_progression"] else {}
-    seuil_succes = float(regles.get("seuil_succes", 0.8))
-    n_succes_consec = int(regles.get("nombre_succes_consecutifs", 3))
-
     with get_db_connection() as conn:
         cur = conn.cursor()
 
-        # 1) Récupérer la tentative
+        # 1) récupérer la tentative
         cur.execute("SELECT * FROM tentative WHERE id = ?", (id,))
         attempt = cur.fetchone()
         if attempt is None:
@@ -146,7 +133,17 @@ def process_attempt(id: int):
         id_apprenant = attempt["id_apprenant"]
         id_aav_cible = attempt["id_aav_cible"]
 
-        # 2) Charger ou créer le statut
+        # 2) récupérer les règles de progression
+        cur.execute("SELECT regles_progression FROM aav WHERE id_aav = ?", (id_aav_cible,))
+        aav_row = cur.fetchone()
+        if aav_row is None:
+            raise HTTPException(status_code=404, detail=f"AAV introuvable: id={id_aav_cible}")
+
+        regles = from_json(aav_row["regles_progression"]) if aav_row["regles_progression"] else {}
+        seuil_succes = float(regles.get("seuil_succes", 0.8))
+        n_succes_consec = int(regles.get("nombre_succes_consecutifs", 3))
+
+        # 3) récupérer ou créer le statut
         cur.execute(
             "SELECT * FROM statut_apprentissage WHERE id_apprenant = ? AND id_aav_cible = ?",
             (id_apprenant, id_aav_cible),
@@ -154,13 +151,17 @@ def process_attempt(id: int):
         statut = cur.fetchone()
 
         if statut is None:
-            # création automatique si absent
             cur.execute(
                 """
-                INSERT INTO statut_apprentissage (id_apprenant, id_aav_cible, niveau_maitrise, historique_tentatives_ids)
-                VALUES (?, ?, 0.0, ?)
+                INSERT INTO statut_apprentissage (
+                    id_apprenant,
+                    id_aav_cible,
+                    niveau_maitrise,
+                    historique_tentatives_ids
+                )
+                VALUES (?, ?, ?, ?)
                 """,
-                (id_apprenant, id_aav_cible, to_json([])),
+                (id_apprenant, id_aav_cible, 0.0, to_json([])),
             )
             cur.execute(
                 "SELECT * FROM statut_apprentissage WHERE id_apprenant = ? AND id_aav_cible = ?",
@@ -170,13 +171,13 @@ def process_attempt(id: int):
 
         ancien_niveau = float(statut["niveau_maitrise"] or 0.0)
 
-        # 3) Mettre à jour l'historique (IDs des tentatives)
+        # 4) historique
         hist_raw = statut["historique_tentatives_ids"]
         hist = from_json(hist_raw) if hist_raw else []
         if id not in hist:
             hist.append(id)
 
-        # 4) Récupérer tous les scores (dans l'ordre chronologique)
+        # 5) scores
         cur.execute(
             """
             SELECT score_obtenu
@@ -186,13 +187,14 @@ def process_attempt(id: int):
             """,
             (id_apprenant, id_aav_cible),
         )
-        scores = [float(r["score_obtenu"]) for r in cur.fetchall()]
+        scores = [float(row["score_obtenu"]) for row in cur.fetchall()]
 
-        # 5) Calcul + message
+        # 6) calcul
         nouveau_niveau = calculer_maitrise(scores, seuil_succes, n_succes_consec)
-        est_maitrise = (nouveau_niveau >= 1.0)
+        est_maitrise = nouveau_niveau >= 1.0
         msg = message(ancien_niveau, nouveau_niveau, est_maitrise, n_succes_consec)
-        # 6) Update statut (transaction)
+
+        # 7) update
         cur.execute(
             """
             UPDATE statut_apprentissage
@@ -204,7 +206,6 @@ def process_attempt(id: int):
             (nouveau_niveau, to_json(hist), statut["id"]),
         )
 
-    # 7) Réponse
     return Process(
         tentative_id=id,
         id_apprenant=id_apprenant,
