@@ -125,8 +125,14 @@ def process_attempt(id: int):
     Traite une tentative : met à jour le statut_apprentissage (mastery + historique)
     en fonction des scores et renvoie un message.
     """
-    SEUIL_SUCCES = 0.9
-    N_SUCCES_CONSEC = 5
+    cur.execute("SELECT regles_progression FROM aav WHERE id_aav = ?", (id_aav_cible,))
+    aav_row = cur.fetchone()
+    if aav_row is None:
+        raise HTTPException(status_code=404, detail=f"AAV introuvable: id={id_aav_cible}")
+
+    regles = from_json(aav_row["regles_progression"]) if aav_row["regles_progression"] else {}
+    seuil_succes = float(regles.get("seuil_succes", 0.8))
+    n_succes_consec = int(regles.get("nombre_succes_consecutifs", 3))
 
     with get_db_connection() as conn:
         cur = conn.cursor()
@@ -183,10 +189,9 @@ def process_attempt(id: int):
         scores = [float(r["score_obtenu"]) for r in cur.fetchall()]
 
         # 5) Calcul + message
-        nouveau_niveau = calculer_maitrise(scores, SEUIL_SUCCES, N_SUCCES_CONSEC)
+        nouveau_niveau = calculer_maitrise(scores, seuil_succes, n_succes_consec)
         est_maitrise = (nouveau_niveau >= 1.0)
-        msg = message(ancien_niveau, nouveau_niveau, est_maitrise, N_SUCCES_CONSEC)
-
+        msg = message(ancien_niveau, nouveau_niveau, est_maitrise, n_succes_consec)
         # 6) Update statut (transaction)
         cur.execute(
             """
