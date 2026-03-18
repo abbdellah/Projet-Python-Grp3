@@ -2,9 +2,9 @@
 
 ## Présentation
 
-Ce projet est une API REST développée avec **FastAPI** dans le cadre du projet **PlatonAAV**. Elle permet de gérer les **tentatives** réalisées par un apprenant sur un AAV (Acquis d’Apprentissage Visé) et de suivre l’évolution de son **statut d’apprentissage**. Le dépôt contient actuellement un dossier `app/`, un dossier `tests/`, un fichier `donnees_test.sql` et un `requirements.txt`. citeturn600630view0turn220029view0
+Ce projet est une API REST développée avec **FastAPI** dans le cadre du projet **PlatonAAV**. Elle permet de gérer les **tentatives** réalisées par un apprenant sur un AAV (Acquis d’Apprentissage Visé) et de suivre l’évolution de son **statut d’apprentissage**. Le dépôt contient actuellement un dossier `app/`, un dossier `tests/`, un fichier `donnees_test.sql` et un `requirements.txt`. 
 
-L’application expose notamment les routes liées aux tentatives et aux statuts, ainsi qu’une route racine `/` et une route de santé `/health`. Le fichier principal `app/main.py` initialise l’application FastAPI, inclut les routeurs `attempts` et `statuts`, puis configure des gestionnaires d’exceptions globaux. citeturn220029view1
+L’application expose notamment les routes liées aux tentatives et aux statuts, ainsi qu’une route racine `/` et une route de santé `/health`. Le fichier principal `app/main.py` initialise l’application FastAPI, inclut les routeurs `attempts` et `statuts`, puis configure des gestionnaires d’exceptions globaux. 
 
 ## Objectif du projet
 
@@ -28,7 +28,7 @@ Le projet repose sur :
 - **HTTPX**
 - **SQLite**
 
-Les dépendances présentes dans le dépôt sont listées dans `requirements.txt` : `fastapi`, `uvicorn[standard]`, `pydantic`, `pydantic-settings`, `pytest` et `httpx`. citeturn220029view0
+Les dépendances présentes dans le dépôt sont listées dans `requirements.txt` : `fastapi`, `uvicorn[standard]`, `pydantic`, `pydantic-settings`, `pytest` et `httpx`. 
 
 ## Structure actuelle du projet
 
@@ -49,7 +49,7 @@ Projet-Python-Grp3/
 └── .gitignore
 ```
 
-Le dépôt public montre bien la présence des répertoires `app/`, `tests/`, ainsi que des fichiers `donnees_test.sql` et `requirements.txt`. citeturn600630view0
+Le dépôt public montre bien la présence des répertoires `app/`, `tests/`, ainsi que des fichiers `donnees_test.sql` et `requirements.txt`. 
 
 ## Installation
 
@@ -93,7 +93,7 @@ Une fois le serveur lancé, les points d’accès utiles sont :
 - Documentation Swagger : `http://127.0.0.1:8000/docs`
 - Vérification de l’état du serveur : `http://127.0.0.1:8000/health`
 
-Le fichier `app/main.py` définit bien la route racine `/` et la route `/health`. citeturn220029view1
+Le fichier `app/main.py` définit bien la route racine `/` et la route `/health`. 
 
 ## Routes principales
 
@@ -105,11 +105,11 @@ Le routeur `app/routers/attempts.py` contient actuellement les routes suivantes 
 - `GET /attempts/{id}` : récupérer une tentative par son identifiant ;
 - `POST /attempts` : créer une nouvelle tentative ;
 - `DELETE /attempts/{id}` : supprimer une tentative ;
-- `POST /attempts/{id}/process` : traiter une tentative et recalculer le statut d’apprentissage associé. citeturn220029view2
+- `POST /attempts/{id}/process` : traiter une tentative et recalculer le statut d’apprentissage associé. 
 
 ### Statuts
 
-Le projet inclut également un routeur `statuts`, chargé depuis `app/main.py`, pour la gestion des statuts d’apprentissage. citeturn220029view1
+Le projet inclut également un routeur `statuts`, chargé depuis `app/main.py`, pour la gestion des statuts d’apprentissage. 
 
 ## Fonctionnement de la phase de test
 
@@ -125,7 +125,7 @@ Ce test vérifie le scénario suivant :
 - trois tentatives existent déjà pour cet apprenant sur cet AAV ;
 - une nouvelle tentative est créée avec un score de `0.90` ;
 - l’endpoint `POST /attempts/{id}/process` est ensuite appelé ;
-- le résultat attendu est que le niveau de maîtrise atteigne `1.0` et que la maîtrise soit validée. citeturn220029view3
+- le résultat attendu est que le niveau de maîtrise atteigne `1.0` et que la maîtrise soit validée. 
 
 Autrement dit, le test valide que le traitement d’une tentative met correctement à jour le statut d’apprentissage lorsqu’un cas favorable est rencontré.
 
@@ -137,11 +137,11 @@ Depuis la racine du projet, exécuter :
 python -m pytest -q
 ```
 
-Le test actuellement retenu dans le projet est `tests/test_db.py`. D’après son contenu, il construit une base de test SQLite locale, injecte des données cohérentes pour Bob et l’AAV 1, puis vérifie le bon comportement des routes du routeur `attempts`. citeturn220029view3
+Le test actuellement retenu dans le projet est `tests/test_db.py`. D’après son contenu, il construit une base de test SQLite locale, injecte des données cohérentes pour Bob et l’AAV 1, puis vérifie le bon comportement des routes du routeur `attempts`. 
 
 ## Données de test
 
-Le dépôt contient également un fichier `donnees_test.sql`, prévu pour fournir des données de test au projet. Ce fichier est bien présent à la racine du dépôt. citeturn600630view0
+Le dépôt contient également un fichier `donnees_test.sql`, prévu pour fournir des données de test au projet. Ce fichier est bien présent à la racine du dépôt. 
 
 ## État actuel du projet
 
