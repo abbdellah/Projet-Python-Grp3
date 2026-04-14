@@ -8,7 +8,7 @@ Endpoints pour gérer les statuts d'apprentissage (niveau de maîtrise d'un appr
 import sqlite3
 from datetime import datetime
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException # type: ignore
+from fastapi import APIRouter, HTTPException
 from ..database import get_db_connection, from_json, to_json
 from ..models import StatutApprentissage, StatutApprentissageCreate, StatutApprentissageMasteryUpdate, StatutApprentissageUpdate, Tentative
 
@@ -152,7 +152,7 @@ def create_learning_status(statut: StatutApprentissageCreate):
     return sqlite_to_statut(res)
 
 @router.put("/learning-status/{statut_id}", response_model=StatutApprentissage)
-def update_learning_status(statut_id: int, statut: StatutApprentissageUpdate):  # Pr cette fonction faut trouver si y a mieux que tout ces if
+def update_learning_status(statut_id: int, statut: StatutApprentissageUpdate):
     """
     Met à jour un statut d'apprentissage déjà existant dans la base de données.
 

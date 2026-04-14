@@ -9,7 +9,6 @@ Endpoints pour créer, consulter, supprimer et traiter les tentatives d'évaluat
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime ###########
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException
 from ..database import get_db_connection, from_json, to_json
@@ -201,27 +200,38 @@ def process_attempt(id: int):
     Returns:
         Process: Le resume du traitement avec anciens/nouveaux niveaux
     """
+    # ── Lectures préalables hors transaction d'écriture ──────────────────────
+    # Règle : ne jamais lever HTTPException à l'intérieur d'un with get_db_connection().
+    # On stocke les résultats dans des variables, on ferme le with, puis on lève.
+
+    # 1) récupérer la tentative
     with get_db_connection() as conn:
         cur = conn.cursor()
-
-        # 1) récupérer la tentative
         cur.execute("SELECT * FROM tentative WHERE id = ?", (id,))
         attempt = cur.fetchone()
-        if attempt is None:
-            raise HTTPException(status_code=404, detail=f"Tentative introuvable: id={id}")
 
-        id_apprenant = attempt["id_apprenant"]
-        id_aav_cible = attempt["id_aav_cible"]
+    if attempt is None:
+        raise HTTPException(status_code=404, detail=f"Tentative introuvable: id={id}")
 
-        # 2) récupérer les règles de progression
+    id_apprenant = attempt["id_apprenant"]
+    id_aav_cible = attempt["id_aav_cible"]
+
+    # 2) récupérer les règles de progression
+    with get_db_connection() as conn:
+        cur = conn.cursor()
         cur.execute("SELECT regles_progression FROM aav WHERE id_aav = ?", (id_aav_cible,))
         aav_row = cur.fetchone()
-        if aav_row is None:
-            raise HTTPException(status_code=404, detail=f"AAV introuvable: id={id_aav_cible}")
 
-        regles = from_json(aav_row["regles_progression"]) if aav_row["regles_progression"] else {}
-        seuil_succes = float(regles.get("seuil_succes", 0.8))
-        n_succes_consec = int(regles.get("nombre_succes_consecutifs", 3))
+    if aav_row is None:
+        raise HTTPException(status_code=404, detail=f"AAV introuvable: id={id_aav_cible}")
+
+    regles = from_json(aav_row["regles_progression"]) if aav_row["regles_progression"] else {}
+    seuil_succes = float(regles.get("seuil_succes", 0.8))
+    n_succes_consec = int(regles.get("nombre_succes_consecutifs", 3))
+
+    # 3-7) statut, scores, calcul, mise à jour dans un seul with
+    with get_db_connection() as conn:
+        cur = conn.cursor()
 
         # 3) récupérer ou créer le statut
         cur.execute(

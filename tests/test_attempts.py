@@ -1,4 +1,5 @@
 import importlib
+import os
 import sqlite3
 from pathlib import Path
 
@@ -107,8 +108,9 @@ VALUES
 
 @pytest.fixture()
 def client(tmp_path: Path):
-    test_db = tmp_path / "test_prof.db"
-    db.DATABASE_PATH = test_db
+    test_db = str(tmp_path / "test.db")
+    os.environ['DATABASE_PATH'] = test_db
+    importlib.reload(db)
 
     with sqlite3.connect(test_db) as conn:
         conn.executescript(SCHEMA_SQL)

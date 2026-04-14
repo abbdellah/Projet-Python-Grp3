@@ -1,16 +1,24 @@
-# app/database.py
+"""
+Module de connexion à la base de donnees SQLite
 
-import sqlite3
+Fournit :
+- get_db_connection() : context manager pour les connexions SQLite
+- init_database() : initialisation des tables communes
+- to_json() / from_json() : utilitaires de sérialisation
+- BaseRepository : classe de base pour le pattern Repository
+"""
+
 import json
+import sqlite3
 from contextlib import contextmanager
 from typing import Optional, List, Dict, Any
-from pathlib import Path
 
-# Configuration
-DATABASE_PATH = Path("platonAAV.db")
+from .config import get_database_path
+
 
 class DatabaseError(Exception):
     """Exception personnalisée pour les erreurs de base de données."""
+
     pass
 
 @contextmanager
@@ -29,10 +37,10 @@ def get_db_connection():
     - Fermeture garantie de la connexion
     - Accessibilité des colonnes par nom (row_factory)
     """
-    conn = sqlite3.connect(DATABASE_PATH)
+    conn = sqlite3.connect(get_database_path())
     # Permet d'accéder aux colonnes par nom: row['nom_colonne']
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON") # Rajout de ma part !!
+    conn.execute("PRAGMA foreign_keys = ON")
 
     try:
         yield conn
@@ -58,7 +66,8 @@ def init_database():
         # ============================================
         # TABLE COMMUNE: AAV (Groupe 1)
         # ============================================
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS aav (
                 id_aav INTEGER PRIMARY KEY,
                 nom TEXT NOT NULL,
@@ -84,17 +93,21 @@ def init_database():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        """)
+        """
+        )
 
         # Index pour accélérer les recherches fréquentes
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_aav_discipline ON aav(discipline)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_aav_discipline ON aav(discipline)"
+        )
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_aav_type ON aav(type_aav)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_aav_active ON aav(is_active)")
 
         # ============================================
         # TABLE COMMUNE: OntologyReference (Groupe 1)
         # ============================================
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS ontology_reference (
                 id_reference INTEGER PRIMARY KEY,
                 discipline TEXT NOT NULL,
@@ -103,12 +116,14 @@ def init_database():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        """)
+        """
+        )
 
         # ============================================
         # TABLE COMMUNE: Apprenant (Groupe 2)
         # ============================================
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS apprenant (
                 id_apprenant INTEGER PRIMARY KEY,
                 nom_utilisateur TEXT NOT NULL UNIQUE,
@@ -123,14 +138,36 @@ def init_database():
                     ON DELETE SET NULL
                     ON UPDATE CASCADE
             )
-        """)
+        """
+        )
 
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_apprenant_username ON apprenant(nom_utilisateur)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_apprenant_username ON apprenant(nom_utilisateur)"
+        )
+
+        # ============================================
+        # TABLE PAS COMMUNE: Apprenant (Groupe 2)
+        # ============================================
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS external_prerequisite_validation (
+            id_apprenant INTEGER,
+            code_prerequis TEXT NOT NULL,
+            validated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            validated_by TEXT,
+            notes FLOAT,
+            PRIMARY KEY (id_apprenant, code_prerequis),
+            FOREIGN KEY (id_apprenant) REFERENCES apprenant(id_apprenant)
+            ON DELETE CASCADE
+            )
+        """
+        )
 
         # ============================================
         # TABLE COMMUNE: StatutApprentissage (Groupe 3)
         # ============================================
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS statut_apprentissage (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 id_apprenant INTEGER NOT NULL,
@@ -148,15 +185,21 @@ def init_database():
                 FOREIGN KEY (id_aav_cible) REFERENCES aav(id_aav)
                     ON DELETE CASCADE
             )
-        """)
+        """
+        )
 
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_statut_apprenant ON statut_apprentissage(id_apprenant)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_statut_aav ON statut_apprentissage(id_aav_cible)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_statut_apprenant ON statut_apprentissage(id_apprenant)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_statut_aav ON statut_apprentissage(id_aav_cible)"
+        )
 
         # ============================================
         # TABLE COMMUNE: Tentative (Groupe 3)
         # ============================================
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS tentative (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 id_exercice_ou_evenement INTEGER NOT NULL,
@@ -173,11 +216,18 @@ def init_database():
                 FOREIGN KEY (id_aav_cible) REFERENCES aav(id_aav)
                     ON DELETE CASCADE
             )
-        """)
+        """
+        )
 
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_tentative_apprenant ON tentative(id_apprenant)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_tentative_aav ON tentative(id_aav_cible)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_tentative_date ON tentative(date_tentative)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tentative_apprenant ON tentative(id_apprenant)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tentative_aav ON tentative(id_aav_cible)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tentative_date ON tentative(date_tentative)"
+        )
 
         conn.commit()
         print("✅ Base de données initialisée avec succès")
@@ -187,9 +237,11 @@ def init_database():
 # Fonctions utilitaires pour le JSON
 # ============================================
 
+
 def to_json(data: Any) -> str:
     """Convertit une donnée Python en chaîne JSON."""
     return json.dumps(data, ensure_ascii=False)
+
 
 def from_json(json_str: str) -> Any:
     """Convertit une chaîne JSON en donnée Python."""
@@ -201,6 +253,7 @@ def from_json(json_str: str) -> Any:
 # ============================================
 # Pattern Repository de Base
 # ============================================
+
 
 class BaseRepository:
     """
@@ -218,7 +271,7 @@ class BaseRepository:
             cursor = conn.cursor()
             cursor.execute(
                 f"SELECT * FROM {self.table_name} WHERE {self.primary_key} = ?",
-                (id_value,)
+                (id_value,),
             )
             row = cursor.fetchone()
             return dict(row) if row else None
@@ -228,8 +281,7 @@ class BaseRepository:
         with get_db_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                f"SELECT * FROM {self.table_name} LIMIT ? OFFSET ?",
-                (limit, offset)
+                f"SELECT * FROM {self.table_name} LIMIT ? OFFSET ?", (limit, offset)
             )
             return [dict(row) for row in cursor.fetchall()]
 
@@ -239,6 +291,6 @@ class BaseRepository:
             cursor = conn.cursor()
             cursor.execute(
                 f"DELETE FROM {self.table_name} WHERE {self.primary_key} = ?",
-                (id_value,)
+                (id_value,),
             )
             return cursor.rowcount > 0

@@ -31,8 +31,7 @@ def calculer_maitrise(scores: List[float], seuil_succes: float, nombre_succes_co
     if len(derniers_scores) >= nombre_succes_consecutifs and len(succes_derniers_scores) == nombre_succes_consecutifs:  # Si l'apprenant à bien fait N tentatives et que les N derniers scores sont tous des succès alors l'apprenant a atteint la maîtrise
         return 1.0
     
-    # Sinon on calcule le niveau de maîtrise en fonction de TOUT les scores et on retourne un chiffre entre 0 et 0.99 passke là l'apprenant n'a pas fait N succès consécutifs. Est ce qu'on devrit pas calculé en fonction des N derniers scores ?
-    moyenne = sum(scores) / len(scores) # Ou du coup sum(derniers_scores) / len(derniers_scores) ?
+    moyenne = sum(scores) / len(scores)
     return min(round(moyenne, 2), 0.99)
 
 def message(ancien_niveau: float, nouveau_niveau: float, est_maitrise: bool, nombre_succes_consecutifs: int) -> str:
