@@ -1,11 +1,16 @@
 # app/routers/statuts.py
+"""
+Router pour les Statuts:
 
-from fastapi import APIRouter, HTTPException # type: ignore
-from typing import List, Optional
-from app.database import get_db_connection, from_json, to_json
-from app.models import *
+Endpoints pour gérer les statuts d'apprentissage (niveau de maîtrise d'un apprenant sur un AAV) ainsi que l'accès à l'historique des tentatives associées
+"""
+
+import sqlite3
 from datetime import datetime
-import sqlite3 # Cette ligne elle sert juste à sqlite3.Row
+from typing import List, Optional
+from fastapi import APIRouter, HTTPException # type: ignore
+from ..database import get_db_connection, from_json, to_json
+from ..models import StatutApprentissage, StatutApprentissageCreate, StatutApprentissageMasteryUpdate, StatutApprentissageUpdate, Tentative
 
 router = APIRouter(tags=["Statuts"])
 
@@ -186,17 +191,6 @@ def update_learning_status(statut_id: int, statut: StatutApprentissageUpdate):  
         champs_fournies.append("date_derniere_session = ?")
         valeurs.append(datetime.now())
 
-        if not champs_fournies: # Je crois que ça sert à rien vu que date_derniere_session est tjrs mis à jour nn ? (Si oui est ce que est ce que on supprime le bloc if ou on vérifie si champs_fournies est vide et si il est vide ça sert à rien de faire un update et on retourne directement le statut actuel ?)
-            with get_db_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT * FROM statut_apprentissage WHERE id = ?", (statut_id,))
-                res = cursor.fetchone()
-
-            if not res:
-                raise HTTPException(status_code=404, detail=f"Statut d'apprentissage d'ID {statut_id} non trouvé")
-            
-            return sqlite_to_statut(res)
-        
         valeurs.append(statut_id)
         cursor.execute(f"UPDATE statut_apprentissage SET {', '.join(champs_fournies)} WHERE id = ?", valeurs)
 

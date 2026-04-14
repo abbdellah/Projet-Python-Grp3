@@ -1,18 +1,34 @@
+#app/routers/attempts.py
+
+"""
+Router pour les Tentatives:
+
+Endpoints pour créer, consulter, supprimer et traiter les tentatives d'évaluation. L'endpoint /process est le point central : il recalcule le niveau de maîtrise après chaque nouvelle tentative.
+"""
+
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime
+from datetime import datetime ###########
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException
-from app.database import get_db_connection, from_json, to_json
-from app.models import Tentative, TentativeCreate
-from app.maitrise import calculer_maitrise, message
-from app.models import Process
+from ..database import get_db_connection, from_json, to_json
+from ..models import Process, Tentative, TentativeCreate
+from ..maitrise import calculer_maitrise, message
 
 router = APIRouter(tags=["Tentatives"])
 
 
 def row_to_tentative(row: sqlite3.Row) -> Tentative:
+    """
+    Convertit une ligne SQLite en un objet Tentative
+
+    Args:
+        row (sqlite3.Row): La ligne SQLite
+
+    Returns:
+        Tentative: La ligne SQLite convertit en objet Tentative
+    """
     data = dict(row)
     # SQLite bool: 0/1 -> False/True
     data["est_valide"] = (data.get("est_valide", 0) == 1)
@@ -30,6 +46,18 @@ def list_attempts(
     limit: int = 100,
     offset: int = 0,
 ):
+    """Liste les tentatives avec des filtres optionnels
+
+    Args:
+        id_apprenant (Optional[int], optional): Filtre par apprennant. Defaults to None.
+        id_aav_cible (Optional[int], optional): Filtre par AAV. Defaults to None.
+        est_valide (Optional[bool], optional): Filtre par validite. Defaults to None.
+        limit (int, optional): Nombre max de resultat. Defaults to 100.
+        offset (int, optional): La pagination. Defaults to 0.
+
+    Returns:
+        List[Tentative]: Liste de tentatives triées de la plus récente à la plus ancienne
+    """
     query = "SELECT * FROM tentative"
     where = []
     params = []
@@ -62,6 +90,18 @@ def list_attempts(
 
 @router.get("/attempts/{id}", response_model=Tentative)
 def get_attempt(id: int):
+    """
+    Recupere une tentative par son id
+
+    Args:
+        id (int): Identifiant de la tentative
+
+    Raises:
+        HTTPException 404: Si la tentative n'existe pas
+
+    Returns:
+        Tentative: La tentative correspondante
+    """
     with get_db_connection() as conn:
         cur = conn.cursor()
         cur.execute("SELECT * FROM tentative WHERE id = ?", (id,))
@@ -75,6 +115,18 @@ def get_attempt(id: int):
 
 @router.post("/attempts", response_model=Tentative, status_code=201)
 def create_attempt(payload: TentativeCreate):
+    """
+    Enregistre une nouvelle tentative dans la base de donnee
+
+    Args:
+        payload (TentativeCreate): Donnees de la tentative à creer
+
+    Raises:
+        HTTPException 500: Si la tentative n'est pas trouvee après la creation
+
+    Returns:
+        Tentative: La tentative nouvellement créée avec son id
+    """
     with get_db_connection() as conn:
         cur = conn.cursor()
         cur.execute(
@@ -112,15 +164,43 @@ def create_attempt(payload: TentativeCreate):
 
 @router.delete("/attempts/{id}", status_code=204)
 def delete_attempt(id: int):
+    """
+    Supprime une tentative
+
+    Args:
+        id (int): Identifiant de la tentative à supprimer
+
+    Raises:
+        HTTPException 404: Si la tentative n'existe pas
+    """
+    with get_db_connection() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM tentative WHERE id = ?", (id,))
+        existe = cur.fetchone() is not None
+
+    if not existe:
+        raise HTTPException(status_code=404, detail=f"Tentative introuvable: id={id}")
+    
     with get_db_connection() as conn:
         cur = conn.cursor()
         cur.execute("DELETE FROM tentative WHERE id = ?", (id,))
-        if cur.rowcount == 0:
-            raise HTTPException(status_code=404, detail=f"Tentative introuvable: id={id}")
-    return
+
+    return None
 
 @router.post("/attempts/{id}/process", response_model=Process)
 def process_attempt(id: int):
+    """
+    Traite une tentative, recalcule et met à jour le niveau de maîtrise
+
+    Args:
+        id (int): Identifiant de la tentative à traiter
+
+    Raises:
+        HTTPException 404: Si la tentative ou l'AAV n'existe pas
+
+    Returns:
+        Process: Le resume du traitement avec anciens/nouveaux niveaux
+    """
     with get_db_connection() as conn:
         cur = conn.cursor()
 

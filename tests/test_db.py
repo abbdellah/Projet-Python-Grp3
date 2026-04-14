@@ -116,6 +116,7 @@ def client(tmp_path: Path):
         conn.commit()
 
     import app.routers.attempts as attempts
+
     importlib.reload(attempts)
 
     app = FastAPI()
@@ -125,7 +126,12 @@ def client(tmp_path: Path):
         yield c
 
 
-def test_process_bob_aav1_reaches_mastery_with_prof_rules(client):
+def test_maitrise_atteinte_apres_succes_consecutifs(client):
+    """
+    Cas : Bob a déjà 3 tentatives (0.70, 0.80, 0.85).
+    Une 4ème tentative à 0.90 doit déclencher la maîtrise car
+    les 3 derniers scores [0.80, 0.85, 0.90] sont tous >= 0.8.
+    """
     r = client.post(
         "/attempts",
         json={
@@ -135,7 +141,7 @@ def test_process_bob_aav1_reaches_mastery_with_prof_rules(client):
             "score_obtenu": 0.90,
             "est_valide": True,
             "temps_resolution_secondes": 95,
-            "metadata": {"source": "prof_test"},
+            "metadata": {"source": "test"},
         },
     )
     assert r.status_code == 201
@@ -151,3 +157,99 @@ def test_process_bob_aav1_reaches_mastery_with_prof_rules(client):
     assert data["ancien_niveau"] == 0.85
     assert data["nouveau_niveau"] == 1.0
     assert data["est_maitrise"] is True
+
+
+def test_maitrise_non_atteinte_scores_insuffisants(client):
+    """
+    Bob ajoute une tentative à 0.60 (sous le seuil 0.8).
+    La maîtrise ne doit pas être atteinte.
+    """
+    r = client.post(
+        "/attempts",
+        json={
+            "id_exercice_ou_evenement": 1005,
+            "id_apprenant": 2,
+            "id_aav_cible": 1,
+            "score_obtenu": 0.60,
+            "est_valide": True,
+        },
+    )
+    assert r.status_code == 201
+    attempt_id = r.json()["id"]
+
+    r2 = client.post(f"/attempts/{attempt_id}/process")
+    assert r2.status_code == 200
+
+    data = r2.json()
+    assert data["nouveau_niveau"] < 1.0
+    assert data["est_maitrise"] is False
+
+
+def test_process_tentative_introuvable(client):
+    """
+    Appeler /process sur un id inexistant doit retourner 404.
+    """
+    r = client.post("/attempts/99999/process")
+    assert r.status_code == 404
+
+
+def test_get_tentative_introuvable(client):
+    """
+    GET sur une tentative inexistante doit retourner 404.
+    """
+    r = client.get("/attempts/99999")
+    assert r.status_code == 404
+
+
+def test_creer_tentative(client):
+    """
+    Créer une tentative doit retourner 201 avec les données correctes.
+    """
+    r = client.post(
+        "/attempts",
+        json={
+            "id_exercice_ou_evenement": 2001,
+            "id_apprenant": 2,
+            "id_aav_cible": 1,
+            "score_obtenu": 0.75,
+            "est_valide": True,
+            "temps_resolution_secondes": 60,
+        },
+    )
+    assert r.status_code == 201
+    data = r.json()
+    assert data["score_obtenu"] == 0.75
+    assert data["id_apprenant"] == 2
+    assert data["est_valide"] is True
+    assert "id" in data
+
+
+def test_lister_tentatives_par_apprenant(client):
+    """
+    GET /attempts?id_apprenant=2 doit retourner les 3 tentatives de Bob.
+    """
+    r = client.get("/attempts?id_apprenant=2")
+    assert r.status_code == 200
+    data = r.json()
+    assert len(data) == 3
+    assert all(t["id_apprenant"] == 2 for t in data)
+
+
+def test_supprimer_tentative(client):
+    """
+    DELETE sur une tentative existante doit retourner 204.
+    Un GET suivant doit retourner 404.
+    """
+    r = client.delete("/attempts/1")
+    assert r.status_code == 204
+
+    r2 = client.get("/attempts/1")
+    assert r2.status_code == 404
+
+
+def test_supprimer_tentative_inexistante(client):
+    """
+    DELETE sur un id inexistant doit retourner 404.
+    """
+    r = client.delete("/attempts/99999")
+    assert r.status_code == 404

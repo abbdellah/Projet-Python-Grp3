@@ -8,7 +8,7 @@ __pycache__/
 *$py.class
 
 *.db
-!platonAAV_test.db  # Optionnel : si vous voulez partager une base de test spécifique
+!platonAAV_test.db
 
 .vscode/
 .idea/
