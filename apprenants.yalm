@@ -1,0 +1,12 @@
+projet: platon aav apprenants
+    groupe: 2
+    binome1:
+        nom: "Depaoli"
+        prenom: "Ugo"
+        email: "ugo.depaoli@edu.univ-eiffel.fr
+    binome2:
+        nom: "Jospeh"
+        prenom: "Peter"
+        email: "peter.jospeh@edu.univ-eiffel.fr"
+    descripton: "Ce projet consiste a implementer les apprenants"
+    

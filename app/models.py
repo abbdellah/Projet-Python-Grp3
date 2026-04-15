@@ -1,7 +1,7 @@
 # Modèles Pydantic
 
 import json
-from typing import Optional, List
+from typing import Optional, List, Tuple
 from enum import Enum
 from datetime import datetime
 from pydantic import BaseModel, Field, field_validator, ConfigDict
@@ -138,12 +138,23 @@ class AAVUpdate(BaseModel):
     """
     Modèle pour la mise à jour partielle (PATCH).
     Tous les champs sont optionnels.
+    Couvre l'ensemble des champs modifiables par le client lourd.
     """
 
     nom: Optional[str] = Field(None, min_length=3, max_length=200)
     libelle_integration: Optional[str] = None
+    discipline: Optional[str] = None
+    enseignement: Optional[str] = None
+    type_aav: Optional[TypeAAV] = None
+    type_evaluation: Optional[TypeEvaluationAAV] = None
     description_markdown: Optional[str] = None
     prerequis_ids: Optional[List[int]] = None
+    prerequis_externes_codes: Optional[List[str]] = None
+    code_prerequis_interdisciplinaire: Optional[str] = None
+    aav_enfant_ponderation: Optional[List[Tuple[int, float]]] = None
+    ids_exercices: Optional[List[int]] = None
+    prompts_fabrication_ids: Optional[List[int]] = None
+    regles_progression: Optional[RegleProgression] = None
     is_active: Optional[bool] = None
 
 
@@ -151,6 +162,10 @@ class AAV(AAVBase):
     """Modèle complet d'un AAV (réponse API)."""
 
     id_aav: int
+    aav_enfant_ponderation: List[Tuple[int, float]] = Field(default_factory=list)
+    ids_exercices: List[int] = Field(default_factory=list)
+    prompts_fabrication_ids: List[int] = Field(default_factory=list)
+    regles_progression: RegleProgression = Field(default_factory=RegleProgression)
     is_active: bool = True
     version: int = 1
     created_at: Optional[datetime] = None
@@ -167,6 +182,33 @@ class AAV(AAVBase):
             except BaseException:
                 return None
         return v
+
+    @field_validator(
+        "aav_enfant_ponderation",
+        "ids_exercices",
+        "prompts_fabrication_ids",
+        mode="before",
+    )
+    @classmethod
+    def parse_json_list_aav(cls, v):
+        """Convertit les champs JSON stockés en base vers des types Python."""
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except Exception:
+                return []
+        return v or []
+
+    @field_validator("regles_progression", mode="before")
+    @classmethod
+    def parse_regles(cls, v):
+        """Convertit le JSON stocké en base vers un objet RegleProgression."""
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except Exception:
+                return {}
+        return v or {}
 
 
 class LearnerBase(BaseModel):
